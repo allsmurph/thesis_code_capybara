@@ -1,0 +1,42 @@
+What do my files actually contain?
+
+In core_results folder, chronologically:
+
+    - ends with "outer_disk.nc" is WITH random phases and WITH ejection and hash tracking (many high ecc particles)
+
+    These top ones can all eventually be deleted. I am interested in knowing why the first one has so many migrated particles compared to my new results.
+
+    - ends with "outer_disk_2.nc" was done WITHOUT randomising phase (also high e particles)
+    - ends with "outer_disk_new_masses.nc" uses the Mesa 2019 masses instead of Wang. NO random phase.
+    - ends with "3_planets.nc" I would like to discard. It doesn't properly track ejection. also particle inclinations only go from 0 to 10 degrees
+    - ends with "3_planets_corrected.nc" should be properly tracking migration as abs(R_peri) < 18 AU rather than a < 18 AU. 
+    I also changed ejection criteria to be e >=1 and a(1+e) > 200. Got a lot more ejection and a lot less migration.
+    Because of this, I will rerun changing the ejection criterion back to see if that was the issue.  
+    - ends with "3_planets_corrected_2.nc" should be the correct one for Novais et al 2025.
+
+
+In mass_sampling_results:
+
+    - ending in core_x.nc : each run has random phases (each core does too). 100 runs, each with 36 cores (equivalent to a mass combo).
+    - "...3p.nc" takes into account a large range of b and c masses and only 2 for d
+    - v2 takes into consideration smaller masses for b and c and 4 masses for d 
+    - MMR changes semimajor axis to force MMR. only uses 2 values for d since last time we saw large masses are impossible.
+
+In core_outputs_yr2:
+
+    - filename ends with "simple.nc" : using my "low mass" values: 0.5, 1.5, 3. We define migrate as a < 1 au and save everything (incl. phase).
+    No forces. only 1 timestep. We remove both ejected and migrated particles [DELETED]
+    
+    - filename ends with "simple_corrected.nc" : the same as previous, but I actually track the particles better (see github for differences) - 29/09/2025
+
+In aline_paper:
+
+    - ends with ptcls.nc : Trevascus 2025 values (inc masses). "mig" when a<18 au and "peri mig" when a(1-e)<18. Deletes particles when flagged
+    - ends with "keep_mig" and "keep_mig_2" : These are exactly the same (did twice for better stats) => same as above, but do not delete particles when flagged
+
+
+in core_outputs_yr2/gas_drag:
+
+    - 2_pl_single_particle.nc - does not track star-grazers. sampling period of 50 (save every 10 years)
+    - 2_pl_single_particle_NOGD.nc - does not track star-grazers. sampling period of 50 (save every 10 years)
+    - 3_pl_single_particle_new.nc - does not track star-grazers. sampling period of 50 (save every 10 years)
