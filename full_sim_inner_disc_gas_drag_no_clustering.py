@@ -20,8 +20,12 @@ resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
 
 jtos = const.M_jup / const.M_sun
 
-R_b = 2.72 * const.R_jup.to('au').value
-R_c = 2.04 * const.R_jup.to('au').value
+# R_b = 2.72 * const.R_jup.to('au').value
+# R_c = 2.04 * const.R_jup.to('au').value
+
+R_b = 10 * const.R_jup.to('au').value
+R_c = 10 * const.R_jup.to('au').value
+R_d = 10 * const.R_jup.to('au').value
 R_star = 1.26 * const.R_sun.to('au').value
 
 dtor = np.pi / 180
@@ -44,27 +48,26 @@ def simulation(tmax, particle_seed, core_id, n_planets):
     star = particle_seed['star']
 
     if n_planets == 3:
-        sim.add(m = 0.952, x=star['x'], y=star['y'], z=star['z'], hash='star', r = R_star)
+        sim.add(m = 0.965, x=star['x'], y=star['y'], z=star['z'], hash='star', r = R_star)
 
         pd = particle_seed['pd']
         m_b, m_c, m_d = 0.7, 2.4, 0.4
 
-        sim.add(m = m_d*jtos, a = pd['a'], e = pd['e'], f=pd['f'], primary=sim.particles['star'],
-            inc = pd['inc'], omega = pd['omega'], Omega = pd['Omega'], hash='pd')
+        sim.add(m = m_d*jtos, a = pd['a'], e = pd['e'], f=pd['f'],
+            inc = pd['inc'], omega = pd['omega'], Omega = pd['Omega'], hash='pd', r=R_d)
 
     if n_planets == 2:
-
-        sim.add(m = 0.965, x=star['x'], y=star['y'], z=star['z'], hash='star', r = R_star)
+        sim.add(m = 0.952, x=star['x'], y=star['y'], z=star['z'], hash='star', r = R_star)
         m_b, m_c = 1.4, 6.4
 
-    sim.add(m = m_b*jtos, a = pb['a'], e = pb['e'], f=pb['f'], primary=sim.particles['star'],
+    sim.add(m = m_b*jtos, a = pb['a'], e = pb['e'], f=pb['f'],
             omega = pb['omega'], inc = pb['inc'], Omega = pb['Omega'], hash = 'pb', r=R_b)
 
-    sim.add(m = m_c*jtos, a = pc['a'], e = pc['e'], f=pc['f'], primary=sim.particles['star'],
+    sim.add(m = m_c*jtos, a = pc['a'], e = pc['e'], f=pc['f'], 
             omega = pc['omega'], inc = pc['inc'], Omega = pc['Omega'], hash = 'pc', r=R_c)
 
     sim.add(m=0, e=p['e'], a=p['a'], inc=p['inc'], f=p['f'],
-            omega=p['omega'], Omega = p['Omega'], hash=int(p['hash']), primary=sim.particles['star'], r=6.68e-9)
+            omega=p['omega'], Omega = p['Omega'], hash=int(p['hash']), r=6.68e-9)
 
     sim.N_active = n_planets + 1
     sim.move_to_com()
@@ -79,7 +82,7 @@ def simulation(tmax, particle_seed, core_id, n_planets):
     trajectories = {h : {'ejected': False, 'collided': False, 'captured': False, 'star_grazed': False,
                         'captured_counter':0, 'captured_t0':None} for h in testp_hashes}
     
-    filename = f'core_outputs_yr2/gas_drag/core_{core_id}_{tmax}_yr_ptcl_{particle_seed["particle"]["hash"]}_{n_planets}_pl_single_particle_new.nc'
+    filename = f'core_outputs_yr2/gas_drag/core_{core_id}_{tmax}_yr_ptcl_{particle_seed["particle"]["hash"]}_{n_planets}_pl_single_particle_2.nc'
     #filename = f'core_outputs_yr2/test_{core_id}.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
@@ -98,16 +101,16 @@ def simulation(tmax, particle_seed, core_id, n_planets):
         ncfile.createDimension('captured_p', None)
         ncfile.createDimension('grazed_p', None)
 
-        times_var = ncfile.createVariable('times', 'f4', ('time',))
-        test_particles_var = ncfile.createVariable('test_particles', 'f4', ('times_to_save', 'saved_ej_param'))
-        massive_bods_var = ncfile.createVariable('massive_bodies', 'f4', ('all_saved_times', 'massive_p', 'saved_ej_param'))
-        ejected_var = ncfile.createVariable('ejected', 'f4', ('ejected_p', 'saved_ej_param'))
-        collided_var = ncfile.createVariable('collided', 'f4', ('collided_p', 'saved_collided_p'))
-        captured_var = ncfile.createVariable('captured', 'f4', ('captured_p', 'saved_collided_p'))
-        star_grazed_var =  ncfile.createVariable('star_grazed', 'f4', ('grazed_p', 'saved_ej_param'))
+        times_var = ncfile.createVariable('times', np.float64, ('time',))
+        test_particles_var = ncfile.createVariable('test_particles', np.float64, ('times_to_save', 'saved_ej_param'))
+        massive_bods_var = ncfile.createVariable('massive_bodies', np.float64, ('all_saved_times', 'massive_p', 'saved_ej_param'))
+        ejected_var = ncfile.createVariable('ejected', np.float64, ('ejected_p', 'saved_ej_param'))
+        collided_var = ncfile.createVariable('collided', np.float64, ('collided_p', 'saved_collided_p'))
+        captured_var = ncfile.createVariable('captured', np.float64, ('captured_p', 'saved_collided_p'))
+        star_grazed_var =  ncfile.createVariable('star_grazed', np.float64, ('grazed_p', 'saved_ej_param'))
         times_var[:] = times
 
-        ncfile.description = f'simulation results from core {core_id}. Trevascus 2025 values (inc masses). {n_planets} planets!! inner disc, 1 particle, i.e., no clustering. deleting collision particles. gas drag on. using omega and Omega for planets. star grazed when dist < 0.1 au and properly tracking'
+        ncfile.description = f'simulation results from core {core_id}. Trevascus 2025 values (inc masses). {n_planets} planets!! inner disc, 1 particle, i.e., no clustering. deleting collision particles. gas drag on. using omega and Omega for planets. star grazed when peri < 0.4 au, fixed stellar masses.'
         ncfile.history = 'created' + time.ctime(time.time())
 
         count_ejected = 0
@@ -219,6 +222,7 @@ def simulation(tmax, particle_seed, core_id, n_planets):
             h = pt.hash.value
             traj = trajectories[h]
             dist = np.sqrt(pt.x**2 + pt.y**2 + pt.z**2)
+            peri_dist = pt.a * (1 - pt.e)
 
             if pt.a < 0 and dist > 200 and not traj['ejected']:
                 print(f'{h}: ejected')
@@ -227,8 +231,7 @@ def simulation(tmax, particle_seed, core_id, n_planets):
                 to_remove.append(h)
                 count_ejected += 1  
 
-            #chanage to peri <= 0.4
-            if dist <= 0.1 and not traj['star_grazed'] and h not in to_remove:
+            if peri_dist <= 0.4 and not traj['star_grazed'] and h not in to_remove and pt.e < 1:
                 print(f'{h}: star grazed')
                 traj['star_grazed'] = True
                 star_grazed_var[count_sg, :] = [tid, pt.x, pt.y, pt.z, pt.e, pt.a, pt.inc, pt.f, pt.Omega, pt.omega, h] 
@@ -423,9 +426,9 @@ def find_mig_and_ej(filename, n_planets):
     #np.savez('hist_data_w_all_parameters.npz', **results)
     return results #{'migrated': migrated_array, 'ejected': ejected_array}
 
-files = glob.glob(f'core_outputs_yr2/*3_pl*saving_every_100_yrs.nc')
-results = find_mig_and_ej(files, 3)
-mig_all = results['mig_all']
+# files = glob.glob(f'core_outputs_yr2/*3_pl*saving_every_100_yrs.nc')
+# results = find_mig_and_ej(files, 3)
+# mig_all = results['mig_all']
 
 #%%
 
@@ -450,7 +453,7 @@ def prompt_n_planets():
     
 def parallelization(tmax, N_cores, mig_all, n_pl):
 
-    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_gas_drag_off.txt', 'w') as f:
+    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_gas_drag_on.txt', 'w') as f:
         pass
 
     with open(f'progress_tracking_files/failed_cores_{n_pl}.txt', 'w') as f:
