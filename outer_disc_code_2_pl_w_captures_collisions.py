@@ -268,7 +268,7 @@ def simulation(m_b, m_c, tmax, particle_indices, core_id, a_group):
 
                 if not traj['captured'] and not traj['ejected']:
                     if (traj['captured_counter'] > 50000): # 10 thousand years
-                        print(f'captured by {capturing_planet.hash.value}', p.a, 'r:', dist)['captured'] = True
+                        print(f'captured by {capturing_planet.hash.value}', p.a, 'r:', dist)
                         traj['captured'] = True
                         captured_var[count_captured, :] = [tid, p.x, p.y, p.z, p.e, p.a, p.inc, p.f, p.Omega, p.omega, h, capturing_planet.hash.value]
                         to_remove.append(h)
