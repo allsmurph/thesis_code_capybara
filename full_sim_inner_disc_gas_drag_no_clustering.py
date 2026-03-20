@@ -231,7 +231,8 @@ def simulation(tmax, particle_seed, core_id, n_planets):
                 to_remove.append(h)
                 count_ejected += 1  
 
-            if peri_dist <= 0.4 and not traj['star_grazed'] and h not in to_remove and pt.e < 1:
+            #5 is close enough
+            if peri_dist <= 0.4 and dist < 5 and not traj['star_grazed'] and h not in to_remove and pt.e < 1:
                 print(f'{h}: star grazed')
                 traj['star_grazed'] = True
                 star_grazed_var[count_sg, :] = [tid, pt.x, pt.y, pt.z, pt.e, pt.a, pt.inc, pt.f, pt.Omega, pt.omega, h] 

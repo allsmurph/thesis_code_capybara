@@ -87,7 +87,7 @@ def simulation(m_b, m_c, tmax, particle_indices, core_id, a_group):
     filename = f'core_outputs_yr2/tests/core_{core_id}_test.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
-        sampling_period = 5000 #every x/5 = 100
+        sampling_period = 5000 #every x/5 = 1000
         s_times = [time for i, time in enumerate(times) if i%sampling_period==0]
         n_saved_times = len(s_times)
         ncfile.createDimension('times_to_save', n_saved_times)

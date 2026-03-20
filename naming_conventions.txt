@@ -37,6 +37,10 @@ In aline_paper:
 
 in core_outputs_yr2/gas_drag:
 
-    - 2_pl_single_particle.nc - does not track star-grazers. sampling period of 50 (save every 10 years)
-    - 2_pl_single_particle_NOGD.nc - does not track star-grazers. sampling period of 50 (save every 10 years)
-    - 3_pl_single_particle_new.nc - does not track star-grazers. sampling period of 50 (save every 10 years)
+    - 2_pl_single_particle.nc - does not track star-grazers. sampling period of 50 (save every 10 years). WRONG INITIAL PARAMETERS
+    - 2_pl_single_particle_NOGD.nc - does not track star-grazers. sampling period of 50 (save every 10 years). WRONG INITIAL PARAMETERS
+    - 3_pl_single_particle_new.nc - tracks star-grazers. sampling period of 50 (save every 10 years). WRONG INITIAL PARAMETERS
+    - 2_pl_single_particle_new.nc - tracks star-grazers but wrong initial parameters
+    - 2_pl_single_particle_new_NOGD.nc - tracks star-grazers but wrong initial parameters
+    - ends with particle_2.nc - tracks star-grazers as peri < 0.4 AU, correct initial parameters, correct stellar masses
+    
