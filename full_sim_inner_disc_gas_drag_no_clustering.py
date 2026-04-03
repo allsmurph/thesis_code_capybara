@@ -200,7 +200,7 @@ def simulation(tmax, particle_seed, core_id, n_planets):
                 return None
 
             if t % sampling_period == 0:
-                
+    
                 if n_planets == 3:
                     massive_bods = ['star', 'pb', 'pc', 'pd']
                 elif n_planets == 2:
@@ -236,7 +236,7 @@ def simulation(tmax, particle_seed, core_id, n_planets):
                 print(f'{h}: star grazed')
                 traj['star_grazed'] = True
                 star_grazed_var[count_sg, :] = [tid, pt.x, pt.y, pt.z, pt.e, pt.a, pt.inc, pt.f, pt.Omega, pt.omega, h] 
-                to_remove.append(h) 
+                #to_remove.append(h) 
                 count_sg += 1
 
             d_pb = np.sqrt((pt.x - sim.particles['pb'].x)**2 +

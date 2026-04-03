@@ -18,6 +18,7 @@ m_proton = 8.411856872862986e-58
 sigma_char = 3.038845902395208e-07
 lg = 0.00841860882192117 
 kb = 3.0898292661510003e-61
+stellar_radius = const.R_sun.to('AU').value
 kgtomsun = (1 / const.M_sun).value
 dtor = np.pi / 180
 # --- create normal REBOUND simulation ---
@@ -26,12 +27,17 @@ sim.units = ('Msun','AU','yr')
 
 sim.add(m = 0.965, x=0, y= 0, z = 0, hash='star')
 
-dists = np.linspace(5, 10, 2)
-for i in dists:
-    sim.add(m=0, a=i, f=np.random.rand()*2.*np.pi, e=0, r=6.68e-7)
+
+for e in np.linspace(0.05, 0.99, 100):
+    for a in np.linspace(0.3, 18, 50):
+        sim.add(m=0, a=a, e=e, f=np.pi/2, r=6.68e-7)
+
+# dists = np.linspace(5, 10, 2)
+# for i in dists:
+#     sim.add(m=0, a=i, f=np.random.rand()*2.*np.pi, e=0, r=6.68e-7)
 # add planets and test particles ...
 sim.N_active = 1
-sim.integrate(10)
+sim.integrate(0.001)
 
 def get_GD_terms(reb_sim):
     '''
@@ -46,6 +52,11 @@ def get_GD_terms(reb_sim):
     m_proton = 1.6726e-27 * kgtomsun
     G = sim.G
     M_star = sim.particles[0].m 
+
+    gas_densities = []
+    C_Ds = []
+    Ts = []
+    v_rel_mags = []
 
     '''first, compute gas density as a function of z'''
 
@@ -70,6 +81,8 @@ def get_GD_terms(reb_sim):
             surface_density *= 0.01 # add a gap
 
         gas_density = surface_density / (np.sqrt(2*np.pi) * H) * np.exp(-(z)**2 / (2 * H**2)) #from Eriksson+2021
+        if r<stellar_radius*3.4:
+            gas_density = 0 #no gas inside of 3.4 stellar radii - from pds 70 papers
 
         'DEFINE GAS VELOCITY'
         #almost keplerian - have to overcome gravity + pressure
@@ -99,8 +112,12 @@ def get_GD_terms(reb_sim):
         # p.ax += a[0]
         # p.ay += a[1]
         # p.az += a[2]
+        gas_densities.append(gas_density)
+        C_Ds.append(C_D)
+        Ts.append(T)
+        v_rel_mags.append(v_rel_mag)
 
-    return gas_density, C_D, T, v_rel_mag
+    return gas_densities, C_Ds, Ts, v_rel_mags
 
 
 '''remember units are AU, yr, Msun'''
@@ -118,12 +135,26 @@ def P_sat_vap(T_pl):
     ans = np.exp(t1) * Pt
     return ans
 
-plt.plot(np.linspace(1, 400, 100), [(P_sat_vap(T)*u.Msun/(u.AU*u.yr**2)).to('Pa').value for T in np.linspace(1, 400, 100)])
+def P_sat_vap_IAPWS(T_pl):
+    Pc = ((22.065e6 * u.Pa).to('Msun/(AU*yr2)')).value
+    Tc = 647.096 #Kelvin
+    theta = T_pl / Tc
+    tau = 1 - theta
+    a1, a2, a3, a4, a5, a6 = -7.85951783, 1.84408259, -11.7866497, 22.6807411, -15.9618719, 1.80122502
+    log_p_over_pc = Tc/T_pl * (a1*tau + a2*tau**1.5 + a3*tau**3 + a4*tau**3.5 + a5*tau**4 + a6*tau**7.5)
+    Psat = np.exp(log_p_over_pc) * Pc
+
+    return Psat
+
+Ts = np.linspace(1, 600, 1000)
+plt.plot(Ts, [(P_sat_vap_IAPWS(T)*u.Msun/(u.AU*u.yr**2)).to('Pa').value for T in Ts], label='IAPWS')
+plt.plot(Ts, [(P_sat_vap(T)*u.Msun/(u.AU*u.yr**2)).to('Pa').value for T in Ts], label='poly fit')
 plt.yscale('log')
 plt.ylim(1e-52, 1e52)
 plt.xlabel('Planetesimal temperature [K]')
 plt.ylabel('Saturation vapor pressure [Pa]')
 plt.grid()
+plt.legend()
 plt.show()
 
 #%%)
@@ -142,7 +173,7 @@ def func(T_pl):
     term2 = C_D * gas_density * v_rel_mag**3 / (32 * sigma_sb)
     term3 = P_sat_vap(T_pl) / (sigma_sb) * np.sqrt(mu / (8*np.pi*R_g*T_pl)) * L_w
     
-    return T**4 + term2 - term3 - T_pl**4
+    return #T**4 + term2 - term3 - T_pl**4
 
 temps = np.linspace(1, 200, 100)
 plt.plot(temps, func(temps))
@@ -179,3 +210,106 @@ def bisection(a,b):
     
 
 bisection(0, 1000)
+
+#%%
+'''At what periastron does second term of temp expression explode?'''
+
+gds, C_Ds, Ts, v_rel_mags = get_GD_terms(sim)
+sigma_sb = (const.sigma_sb.to('Msun/(yr3*K4)')).value
+
+term2 = (np.array(C_Ds) * np.array(gds) * (np.array(v_rel_mags))**3 / (32 * sigma_sb))**(1/4)
+
+all_es = [sim.particles[i+1].e for i in range(len(sim.particles)-sim.N_active)]
+all_as = [sim.particles[i+1].a for i in range(len(sim.particles)-sim.N_active)]
+
+plt.plot(np.array(all_as) * (1 - np.array(all_es)), term2, c='saddlebrown', linestyle='', marker='o', markersize=1)
+plt.xlabel('Periastron [AU]')
+plt.ylabel('Friction heating term [K]')
+plt.yscale('log')
+plt.xscale('log')
+plt.grid(alpha=0.5)
+plt.show()
+
+plt.plot(np.array(all_es), term2, c='orange', linestyle='',marker='o', markersize=1)
+plt.xlabel('Eccentricity')
+plt.ylabel('Friction heating term [K]')
+plt.yscale('log')
+plt.xscale('log')
+plt.grid(alpha=0.5)
+plt.show()
+
+#%%
+'''Solve equation by finding where LHS and RHS intersect'''
+
+# sim2 = rebound.Simulation()
+
+# sim2.units = ('Msun','AU','yr')
+
+# sim2.add(m = 0.965, x=0, y= 0, z = 0, hash='star')
+
+
+# sim2.add(m=0, a=0.5, e=0.5, f=np.pi/2, r=6.68e-7)
+
+# sim2.N_active = 1
+# sim2.integrate(0.001)
+
+def T_pl_dependent_terms(T_pl):
+    L_w = ((2.8e6 * u.J / u.kg).to('AU2/yr2')).value
+    sigma_sb = (const.sigma_sb.to('Msun/(yr3*K4)')).value
+    mu = ((18 * u.g/u.mol).to('Msun/mol')).value
+    R_g = ((8.314 * u.J / (u.mol * u.K)).to('Msun*AU2/(yr2*K*mol)')).value
+
+    term3 = P_sat_vap_IAPWS(T_pl) / (sigma_sb) * np.sqrt(mu / (8*np.pi*R_g*T_pl)) * L_w
+
+    return term3 + T_pl**4
+    
+def T_pl_independent_terms(simulation):
+    sigma_sb = (const.sigma_sb.to('Msun/(yr3*K4)')).value
+
+    gds, C_Ds, T, v_rel_mags = get_GD_terms(simulation)
+
+    term2 = (np.array(C_Ds) * np.array(gds) * (np.array(v_rel_mags))**3 / (32 * sigma_sb))**(1/4)
+
+    return term2 + np.array(T)**4
+
+Ts = np.linspace(1, 600, 1000)
+
+f_T = T_pl_dependent_terms(Ts)[:,None]
+min_t_ind, max_t_ind = np.min(T_pl_independent_terms(sim)), np.max(T_pl_independent_terms(sim))
+
+diff_min = (f_T - min_t_ind).flatten()
+diff_max = (f_T - max_t_ind).flatten()
+
+# sign changes → intersections
+idx_min = np.where(np.diff(np.sign(diff_min).flatten()) != 0)[0]
+idx_max = np.where(np.diff(np.sign(diff_max)) != 0)[0]
+
+# extract temperatures
+T_int_min = Ts[idx_min]
+T_int_max = Ts[idx_max]
+
+
+plt.plot(Ts, T_pl_dependent_terms(Ts)[:,None], label=r'subl cooling + $T_\mathrm{pl}^4$', c='saddlebrown')
+# plt.plot(Ts, np.full_like(Ts, T_pl_independent_terms(sim)[min_t_ind]), c='orange', alpha=0.5)
+# plt.plot(Ts, np.full_like(Ts, T_pl_independent_terms(sim)[max_t_ind]), c='orange', alpha=0.5)
+#plt.scatter(T_int_min, min_t_ind, color='black', label='T_pl independent terms (min)', zorder=5)
+#plt.scatter(T_int_max, max_t_ind, color='black', label='T_pl independent terms (max)', zorder=5)
+plt.fill_between(Ts, min_t_ind, max_t_ind, color='orange', alpha=0.5, label='friction + rad heating')
+# plt.vlines(T_int_min[0], ymin=1, ymax=min_t_ind, linestyle='--', colors='grey')
+# plt.vlines(T_int_max[0], ymin=1, ymax=max_t_ind, linestyle='--', colors='grey')
+#plt.plot(Ts, Ts**4, label=r'$T_\mathrm{pl}^4$', c='steelblue', linestyle='--')
+# for i in range(400):
+#     plt.plot(Ts, np.full_like(Ts, T_pl_independent_terms(sim)[-i]), c='orange', alpha=0.5)
+#     #plt.plot(Ts, np.full_like(Ts, T_pl_independent_terms(sim)[-i]), c='orange')
+#     if i == 0:
+#         plt.plot(Ts, np.full_like(Ts, T_pl_independent_terms(sim)[i]), label=f'T_pl independent terms', c='orange')
+plt.ylim(1e0, 1e16)
+plt.yscale('log')
+plt.xlabel('Planetesimal temperature [K]')
+plt.ylabel('arbitrary units')
+plt.grid()
+plt.legend(loc='lower right')
+plt.title(r'$T_\mathrm{pl}^4$ + subl cooling = frict + rad heating', y=1.02, fontsize=16)
+plt.tight_layout()
+plt.show()
+

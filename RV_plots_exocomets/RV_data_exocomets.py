@@ -16,7 +16,7 @@ print(os.getcwd())
 sys.path.append("/data/ally/thesis_code")
 sys.path.append("/data/ally/thesis_code/RV_plots_exocomets")
 
-from thesis_code.plotting_params import use_my_style
+from plotting_params import use_my_style
 use_my_style()
 
 
@@ -281,7 +281,28 @@ Na2_rv = find_RV([Na2_vac], Na2_vac)[0]
 color1 = ["#F5B217", '#eb6f3b', '#faad7f']
 color2 = ['grey', 'silver']
 color_comet = 'k' #'#ebbd1c'
+colors_warm = [
+    "#5C4033",  # deep brown
+    "#7A4E2D",  # brown-orange
+    "#A65E2E",  # burnt orange
+    "#C96F2D",  # warm orange
+    "#E07A2F",  # soft orange
+    "#F18F3B",  # light orange
+    "#F5A65B",  # peachy orange
+    "#F2C572",  # warm yellow
+]
 
+colors_mixed = [
+    "#08306B",  # deep blue (Blues)
+    "#2171B5",  # medium blue
+    "#6BAED6",  # light blue
+    "#6D0230",  # deep purple-pink (PuRd)
+    "#A85393",  # strong pink
+    "#F797BD",  # soft pink
+    "#6B4F3A",  # brown
+    "#E89C3D",  # orange
+    "#F2D16B"   # yellow
+]
 
 def offset(factor, list):
     list_off = []
@@ -303,14 +324,14 @@ remove_range1, remove_range2 = [589.158, 589.188], [589.758, 589.788]
 rv1_remove = find_RV(remove_range1, Na1_vac)
 rv2_remove = find_RV(remove_range2, Na2_vac)
 
-
-
-for date in new_date_list:
+for index, date in enumerate(new_date_list):
     rv1, rv2 = np.array(rv1_dict[date]), np.array(rv2_dict[date])
     flux1, flux2 = np.array(flux1_pair[date]), np.array(flux2_pair[date])
 
-    ax[0].plot(rv1, flux1, color='darkgrey', alpha=0.3, lw=lw1)
-    ax[1].plot(rv2, flux2, color='darkgrey', alpha=0.3, lw=lw1)
+    color = colors_mixed[index % len(colors_mixed)]
+
+    ax[0].plot(rv1, flux1, alpha=0.5,  lw=lw1,  rasterized=True)
+    ax[1].plot(rv2, flux2, alpha=0.5,  lw=lw1,  rasterized=True)
 
     ax[0].set_xlabel(ax_labels['x'], fontsize=18)
 
@@ -327,57 +348,111 @@ for k in [0, 1]:
     ax[k].yaxis.set_major_locator(MultipleLocator(0.5))
     ax[k].yaxis.set_minor_locator(MultipleLocator(0.25))
 
-    ax[k].plot([0, 0], [ax[k].get_ylim()[0], ax[k].get_ylim()[1]], color='k', ls='--', lw=1, dashes=(7, 3))
-    ax[k].vlines([-100, -75, -50, -25, 25, 50, 75, 100], ax[k].get_ylim()[0], ax[k].get_ylim()[1], color='grey', ls=':', lw=0.5, zorder=-10)
-    ax[k].hlines([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5], ax[k].get_xlim()[0], ax[k].get_xlim()[1], color='grey', ls=':', lw=0.5, zorder=-10)
+    # ax[k].plot([0, 0], [ax[k].get_ylim()[0], ax[k].get_ylim()[1]], color='k', ls='--', lw=1, dashes=(7, 3))
+    # ax[k].vlines([-100, -75, -50, -25, 25, 50, 75, 100], ax[k].get_ylim()[0], ax[k].get_ylim()[1], color='grey', ls=':', lw=0.5, zorder=-10)
+    # ax[k].hlines([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5], ax[k].get_xlim()[0], ax[k].get_xlim()[1], color='grey', ls=':', lw=0.5, zorder=-10)
+    # ax[k].text(-91, 0.3, r'exocomets', rotation=-45.5, color='k', ha='center', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
 
     dline_k = [2, 1]
-    ax[k].text(0.97, 0.93, r'Na I D$_{\rm\mathbf {' + str(dline_k[k]) + r'}}$', transform=ax[k].transAxes,  color='k', ha='right', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
-
-    #ax[1].grid(which='both', color='grey', ls=':', lw=0.5, zorder=-10)
+    wavelength_k = [round(Na1_air, 1), round(Na2_air, 1)]
+    #ax[k].text(0.97, 0.93, r'Na I D$_{\rm\mathbf {' + str(dline_k[k]) + r'}}$', transform=ax[k].transAxes,  color='k', ha='right', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
+    ax[k].set_title(r'Na I D$_{\rm {' + str(dline_k[k]) + r'}}$ (' + str(wavelength_k[k]) + r' nm)', fontsize=18)
     ax[k].set_axisbelow(True)
+    ax[k].grid(which='both', alpha=0.3)
+    ax[k].legend()
 
-ax[0].text(-19, 1.2, r'disc' + '\n' + r'lines', color='k', ha='center', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
-ax[0].annotate('', xy=(-22, 0.8), xytext=(-22, 0.8 + 0.24), arrowprops=dict(arrowstyle=']->, widthA=0, lengthA=0.4, angleA=0', lw=1.5, color='k'))
-ax[0].annotate('', xy=(-16, 0.8), xytext=(-16, 0.8 + 0.24), arrowprops=dict(arrowstyle=']->, widthA=0, lengthA=0.4, angleA=0', lw=1.5, color='k'))
+ax[0].text(-19, 1.45, r'static lines', fontsize=15, color='k', ha='center', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
 
-ax[0].text(16, 0.55, r'accretion line', color='k', ha='left', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
-ax[0].annotate('', xy=(5, 0.8), xytext=(13, 0.6), arrowprops=dict(arrowstyle='->', lw=1.5, color='k'))
+start_x, start_y = -19, 1.35
 
-#ax[0].annotate('', xy=(-77, 0.32), xytext=(-77, 0.32 + 1e-7), arrowprops=dict(arrowstyle=']-, widthA=3.8, lengthA=0.4, angleA=-35', lw=1.5, color='k'))
-#ax[0].annotate('', xy=(-86, 0.36), xytext=(-86, 0.36 + 1e-7), arrowprops=dict(arrowstyle=']-, widthA=3, lengthA=0, angleA=-45', lw=1.5, color='k'))
+# Downward arrow
+ax[0].annotate(
+    '',xy=(start_x+5, 0.9),  xytext=(start_x, start_y),
+    arrowprops=dict(arrowstyle='->', lw=1, color='k'))
 
-# ax[0].annotate('', xy=(-120, 0.65), xytext=(-55, 0.08), arrowprops=dict(arrowstyle='-', lw=1.5, color='k'))
-# ax[0].annotate('', xy=(-119, 0.645), xytext=(-119, 0.645 + 1e-7), arrowprops=dict(arrowstyle=']-, widthA=0, lengthA=0.4, angleA=0', lw=1.5, color='k'))
-# ax[0].annotate('', xy=(-55.8, 0.088), xytext=(-55.8, 0.088 + 1e-7), arrowprops=dict(arrowstyle=']-, widthA=0, lengthA=0.4, angleA=-90', lw=1.5, color='k'))
-# ax[0].text(-91, 0.3, r'exocomets', rotation=-45.5, color='k', ha='center', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
+ax[0].annotate(
+    '',xy=(start_x, 0.9),  xytext=(start_x, start_y),
+    arrowprops=dict(arrowstyle='->', lw=1, color='k'))
 
-ax[0].plot(rv1_avg, flux1_avg, color=color1[0], lw=lw2)
-ax[1].plot(rv2_avg, flux2_avg, color=color1[0], lw=lw2)
 
-line1 = [Line2D([0], [0], color='darkgrey', lw=lw1 + 0.5)]
-line2 = [Line2D([0], [0], color=color1[0], lw=lw2)]
-label1 = [r'HARPS data']
-label2 = [r'average']
+# Arrow pointing toward x ≈ 0
+ax[0].annotate('', xy=(-8, 1.1), xytext=(start_x, start_y),
+    arrowprops=dict(arrowstyle='->', lw=1, color='k'))
 
-leg_kwargs = dict(loc='right', ncol=1, labelcolor='linecolor', handlelength=0.85,
-                  handletextpad=0.4, labelspacing=0.25, prop=dict(size=16, weight='bold'))
+# endpoints
 
-leg1 = ax[1].legend(line1, label1, bbox_to_anchor=(1.02, 0.13), **leg_kwargs)
-leg2 = ax[1].legend(line2, label2, bbox_to_anchor=(1.02, 0.075), **leg_kwargs)
-ax[1].add_artist(leg1)
-ax[1].add_artist(leg2)
+x1, y1 = -120, 0.6
+x2, y2 = -55, 0.05
+ax[0].annotate('', xy=(x1, y1), xytext=(x2, y2), arrowprops=dict(arrowstyle='-', lw=1, color='k'))
+ax[0].annotate('', xy=(x1+0.8, y1-0.014), xytext=(x1, y1+0.1), arrowprops=dict(arrowstyle='-', lw=1, color='k'))
+ax[0].annotate('', xy=(x2-2.5, y2+0.008), xytext=(x2+12, y2+0.008), arrowprops=dict(arrowstyle='-', lw=1, color='k'))
+xm = (x1 + x2) / 2
 
-# for text in leg1.get_texts():
-#     text.set_path_effects([pe.withStroke(linewidth=2, foreground='w'), pe.Normal()])
-# for text in leg2.get_texts():
-#     text.set_path_effects([pe.withStroke(linewidth=2, foreground='w'), pe.Normal()])
+ym = (y1 + y2) / 2
 
-plt.suptitle('PDS 70 HARPS Radial Velocity Data (2018)', fontsize=20)
-#plt.margins(0.02, 0.02)
-#plt.subplots_adjust(wspace=0.05, hspace=0.06)
+# angle of inclination
+
+# text with white background box
+ax[0].text(
+    xm, ym,
+    f'variable lines',
+    fontsize=15,
+    rotation=-44,
+    rotation_mode='anchor',
+    ha='center',
+    va='center',
+    color='k',
+    bbox=dict(
+        facecolor='white',
+        edgecolor='none',
+        alpha=1,
+        pad=2
+    )
+)
+# plot inclined line
+#ax[k].plot([x1, x2], [y1, y2], color='k', linestyle='dashed')
+
+# midpoint
+
+# ax[0].annotate('', xy=(-22, 0.8), xytext=(-20, 0.8 + 0.24), arrowprops=dict(arrowstyle=']->, widthA=0, lengthA=0.4, angleA=0', lw=1, color='k'))
+
+# ax[0].annotate('', xy=(-15, 0.8), xytext=(-17, 0.8), arrowprops=dict(arrowstyle=']->, widthA=0, lengthA=0.4, angleA=0', lw=1, color='k'))
+
+# ax[0].text(16, 0.55, r'accretion line', color='k', ha='left', va='center', path_effects=[pe.withStroke(linewidth=2, foreground='w')])
+# ax[0].annotate('', xy=(5, 0.8), xytext=(13, 0.6), arrowprops=dict(arrowstyle='->', lw=1.5, color='k'))
+
+# ax[0].annotate('', xy=(-77, 0.32), xytext=(-77, 0.32 + 1e-7), arrowprops=dict(arrowstyle=']-, widthA=3.8, lengthA=0.4, angleA=-35', lw=1.5, color='k'))
+# ax[0].annotate('', xy=(-86, 0.36), xytext=(-86, 0.36 + 1e-7), arrowprops=dict(arrowstyle=']-, widthA=3, lengthA=0, angleA=-45', lw=1.5, color='k'))
+
+
+# ax[0].plot(rv1_avg, flux1_avg, color=color1[0])
+# ax[1].plot(rv2_avg, flux2_avg, color=color1[0])
+
+# line1 = [Line2D([0], [0], color='darkgrey', lw=lw1 + 0.5)]
+# line2 = [Line2D([0], [0], color=color1[0], lw=lw2)]
+# label1 = [r'HARPS data']
+# label2 = [r'average']
+
+# leg_kwargs = dict(loc='right', ncol=1, labelcolor='linecolor', handlelength=0.85,
+#                   handletextpad=0.4, labelspacing=0.25, prop=dict(size=16, weight='bold'))
+
+# leg1 = ax[1].legend(line1, label1, bbox_to_anchor=(1.02, 0.13), **leg_kwargs)
+# leg2 = ax[1].legend(line2, label2, bbox_to_anchor=(1.02, 0.075), **leg_kwargs)
+# ax[1].add_artist(leg1)
+# ax[1].add_artist(leg2)
+
+# # for text in leg1.get_texts():
+# #     text.set_path_effects([pe.withStroke(linewidth=2, foreground='w'), pe.Normal()])
+# # for text in leg2.get_texts():
+# #     text.set_path_effects([pe.withStroke(linewidth=2, foreground='w'), pe.Normal()])
+
+plt.suptitle('RV data from 18 observations of PDS 70 with HARPS', fontsize=20)
+# #plt.margins(0.02, 0.02)
+# #plt.subplots_adjust(wspace=0.05, hspace=0.06)
 plt.tight_layout()
-fig_name = '/data/ally/thesis_code/RV_plots_exocomets/RV_HARPS_DATA_no_exo_label'
+
+fig_name = '/data/ally/thesis_code/RV_plots_exocomets/RV_HARPS_DATA_new'
 fig.savefig(fig_name + '.png', bbox_inches='tight', dpi=300, pad_inches=0.1)
 fig.savefig(fig_name + '.pdf', bbox_inches='tight', dpi=300, pad_inches=0.1)
 plt.show()
+# %%

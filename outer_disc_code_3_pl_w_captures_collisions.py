@@ -78,7 +78,7 @@ def simulation(m_d, m_b, m_c, tmax, particle_indices, core_id, a_group):
     #filename = f'core_outputs_capy/test_{core_id}.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
-        sampling_period = 60000 #save every x/5 = 100
+        sampling_period = 50000 #save every x/5 = 100
         s_times = [time for i, time in enumerate(times) if i%sampling_period==0]
         n_saved_times = len(s_times)
         ncfile.createDimension('times_to_save', n_saved_times)
@@ -217,6 +217,7 @@ def simulation(m_d, m_b, m_c, tmax, particle_indices, core_id, a_group):
                 #     if t == 0:
                 #         test_particles_var[0, i, :] = [p.x, p.y, p.z, p.e, p.a, p.inc, p.f, p.Omega, p.omega, p.hash.value]
 
+                #need to check they are also within the orbits of outer planets!!
                 if (p.a*(1-p.e)) < 18 and p.e < 1 and not traj['migrated_peri']:
                     traj['migrated_peri'] = True
                     migrated_peri_var[count_migrated_peri,:] = [tid, p.x, p.y, p.z, p.e, p.a, p.inc, p.f, p.Omega, p.omega, p.hash.value]
@@ -354,8 +355,8 @@ def parallelization(N_testparticles, tmax, N_cores):
 #%%
 if __name__ == '__main__':
 
-    tmax = 6e6
-    N_cores = 10
+    tmax = 5e6
+    N_cores = 50
     
     if prompt():
         filenames = parallelization(N_particles, tmax, N_cores)

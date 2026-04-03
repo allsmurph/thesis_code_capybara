@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import rebound
 import astropy.constants as const
 from multiprocessing import Pool
+import requests
 from tqdm import tqdm 
 from joblib import Parallel, delayed
 import os 
@@ -39,7 +40,6 @@ Omega_b, Omega_c = 176, 158
 dtor = np.pi / 180
 #%%ä
 
-N_particles = 10000
 
 def simulation(m_b, m_c, tmax, particle_indices, core_id, a_group):
 
@@ -73,10 +73,6 @@ def simulation(m_b, m_c, tmax, particle_indices, core_id, a_group):
 
     sim.N_active = 3
     sim.move_to_com()
-
-    for particle in sim.particles[sim.N_active:]:
-        print(particle.hash)
-    
 
     trajectories = {create_unique_hash(i, core_id) : {'ejected': False, 'migrated': False,
                                                       'collided': False, 'captured': False,
@@ -225,6 +221,7 @@ def simulation(m_b, m_c, tmax, particle_indices, core_id, a_group):
                 #     if t == 0:
                 #         test_particles_var[0, i, :] = [p.x, p.y, p.z, p.e, p.a, p.inc, p.f, p.hash.value]
 
+                #need to check they are also within the orbits of outer planets!!
                 if (p.a*(1-p.e)) <= 18 and p.e < 1 and not traj['migrated_peri']:
                     traj['migrated_peri'] = True
                     migrated_peri_var[count_migrated_peri,:] = [tid, p.x, p.y, p.z, p.e, p.a, p.inc, p.f, p.Omega, p.omega, p.hash.value]
@@ -329,12 +326,23 @@ def parallelization(N_testparticles, tmax, N_cores):
     return chunk_results
 
 #%%
+from notify_run import Notify
+
+notify = Notify()
+print(notify.endpoint)
 if __name__ == '__main__':
 
-    tmax = 5e6
-    N_cores = 50
-    
+    N_particles = 100
+
+    tmax = 1000
+    N_cores = 5
+
+    notify.send('Script started')
+
     if prompt():
         filenames = parallelization(N_particles, tmax, N_cores)
     else:
         print('I think you should change your file name first. You are welcome.')
+
+    notify.send('Script done! ✅')
+
