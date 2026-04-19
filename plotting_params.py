@@ -75,3 +75,11 @@ my_rcparams = {
 def use_my_style():
     plt.rcParams.update(my_rcparams)
 
+
+# color1 = "#841550FF" # darker purple
+# color2 = "#CAA1CD" #"#CE7EB2"
+
+# color_blue = [
+#     "#53a7d4",  # medium
+#     "#002A68",  # dark
+# ]
