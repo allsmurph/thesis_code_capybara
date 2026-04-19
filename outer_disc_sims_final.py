@@ -117,7 +117,7 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
     #filename = f'core_outputs_yr2/tests/core_{core_id}_test.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
-        sampling_period = 500 #every x/5 = 100
+        sampling_period = 5000 #every x/5 = 1000
         s_times = [time for i, time in enumerate(times) if i%sampling_period==0]
         n_saved_times = len(s_times)
         ncfile.createDimension('times_to_save', n_saved_times)
@@ -177,7 +177,7 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
                     print(f'collided! {p1.hash, p2.hash}')
                     # Save parameters in NetCDF
                     pp = sim.particles[hash_val]
-                    collided_var[count_collided, :] = [sim.t, pp.x, pp.y, pp.z, pp.e, pp.a, pp.inc, pp.f, pp.Omega, pp.omega, pp.hash.value, planet_hash]
+                    collided_var[count_collided, :] = [sim.t, pp.x, pp.y, pp.z, pp.e, pp.a, pp.inc, pp.f, pp.Omega, pp.omega, hash_val.value, planet_hash]
 
             return 0
         

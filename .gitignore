@@ -8,3 +8,4 @@ mass_sampling_results/
 plots/
 progress_tracking_files/
 sims/
+__pycache__/

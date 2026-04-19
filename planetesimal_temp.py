@@ -81,6 +81,7 @@ def get_GD_terms(reb_sim):
             surface_density *= 0.01 # add a gap
 
         gas_density = surface_density / (np.sqrt(2*np.pi) * H) * np.exp(-(z)**2 / (2 * H**2)) #from Eriksson+2021
+        
         if r<stellar_radius*3.4:
             gas_density = 0 #no gas inside of 3.4 stellar radii - from pds 70 papers
 
@@ -150,7 +151,7 @@ Ts = np.linspace(1, 600, 1000)
 plt.plot(Ts, [(P_sat_vap_IAPWS(T)*u.Msun/(u.AU*u.yr**2)).to('Pa').value for T in Ts], label='IAPWS')
 plt.plot(Ts, [(P_sat_vap(T)*u.Msun/(u.AU*u.yr**2)).to('Pa').value for T in Ts], label='poly fit')
 plt.yscale('log')
-plt.ylim(1e-52, 1e52)
+plt.ylim(1e-52, 1e13)
 plt.xlabel('Planetesimal temperature [K]')
 plt.ylabel('Saturation vapor pressure [Pa]')
 plt.grid()
