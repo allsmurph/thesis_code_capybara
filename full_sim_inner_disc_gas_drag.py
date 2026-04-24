@@ -162,7 +162,7 @@ def simulation(tmax, particle_seed, core_id, n_planets):
                     print(f'collided! {p1.hash, p2.hash}')
                     # Save parameters in NetCDF
                     pp = sim.particles[hash_val]
-                    collided_var[count_collided, :] = [sim.t, pp.x, pp.y, pp.z, pp.e, pp.a, pp.inc, pp.f, pp.Omega, pp.omega, pp.hash.value, planet_hash]
+                    collided_var[count_collided, :] = [sim.t, pp.x, pp.y, pp.z, pp.e, pp.a, pp.inc, pp.f, pp.Omega, pp.omega, pp.hash.value, planet_hash.value]
             return 0
         
 
@@ -263,14 +263,6 @@ def simulation(tmax, particle_seed, core_id, n_planets):
 
                     if inside_pd:
                         capturing_planet = sim.particles['pd']
-                        
-                        if traj['captured_t0'] is None:
-                            traj['captured_t0'] = sim.t
-                        traj['captured_counter'] +=1
-                    
-                    else:
-                        traj['captured_counter'] = 0
-                        traj['captured_t0'] = None
 
                 inside_pb = d_pb < hill_pb
                 inside_pc = d_pc < hill_pc

@@ -5,119 +5,94 @@ import matplotlib.pyplot as plt
 import rebound
 import astropy.constants as const
 from multiprocessing import Pool
-import requests
 from tqdm import tqdm 
 from joblib import Parallel, delayed
-import os 
+# import os 
 import time
 import netCDF4
 import glob
 import resource
+import reboundx
 
-# Limit to 100 GB of virtual memory,noone likes me and i know why
-
+# Limit to 100 GB of virtual memory
 limit = 100 * 1024 ** 3
 resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
 
 jtos = const.M_jup / const.M_sun
 
-radii = 10 * const.R_jup.to('au').value
+# R_b = 2.72 * const.R_jup.to('au').value
+# R_c = 2.04 * const.R_jup.to('au').value
+
+R_b = 10 * const.R_jup.to('au').value
+R_c = 10 * const.R_jup.to('au').value
+R_d = 10 * const.R_jup.to('au').value
 R_star = 1.26 * const.R_sun.to('au').value
-# a_b, a_c, a_d = 21.1, 35.3, 10.7
-# e_b, e_c, e_d = 0.131, 0.033, 0.25
-# w_b, w_c, w_d = 191.4, 63, 29
-# i_b, i_c, i_d = 128.7, 128.5, 151
-# Omega_b, Omega_c, Omega_d = 174.3, 159.8, 144
 
-two_planet_case = {
-    'star' : {'mass':0.952},
-    'pb' : {'mass': 1.4*jtos, 'a': 20.7, 'e': 0.16,
-            'inc': np.radians(128.3 - 130.6),
-            'omega': np.radians(190), 'Omega': np.radians(176)},
-    'pc' : {'mass': 6.4*jtos, 'a': 33.9,
-            'e': 0.042, 'inc': np.radians(128.3 - 129.8),
-            'omega': np.radians(77), 'Omega': np.radians(158)}
-}
-
-three_planet_case = {
-    'star' : {'mass':0.965},
-    'pb' : {'mass': 0.7*jtos, 'a': 21.1, 'e': 0.131,
-            'inc': np.radians(128.3 - 128.7),
-            'omega': np.radians(191.4), 'Omega': np.radians(174.3)},
-    'pc' : {'mass': 2.4*jtos, 'a': 35.3,
-            'e': 0.033, 'inc': np.radians(128.3 - 128.5),
-            'omega': np.radians(63), 'Omega': np.radians(159.8)},
-    'pd' : {'mass': 0.4*jtos, 'a': 10.7,
-            'e': 0.25, 'inc': np.radians(128.3 - 151),
-            'omega': np.radians(29), 'Omega': np.radians(144)}
-}
-
-# a_b, a_c = 20.7, 33.9
-# e_b, e_c = 0.16, 0.042
-# i_b, i_c = 130.6, 129.8
-# w_b, w_c = 190, 77
-# Omega_b, Omega_c = 176, 158
-#m_b, m_c, m_d = 0.7, 2.4, 0.4
+dtor = np.pi / 180
 
 #%%ä
-def simulation(tmax, particle_indices, core_id, a_group, n_planets):
 
-    times = np.linspace(0, tmax, int(tmax*5))
+def simulation(tmax, particle_seed, core_id, n_planets):
+
 
     '''
     Run a rebound simulation for specific particle indices for tmax years
     '''
     start = time.time()
 
-    def create_unique_hash(index, coreid):
-        return int(index*1000 + coreid)
-
     sim = rebound.Simulation()
     sim.units = ['msun', 'yr', 'AU']
 
+    p = particle_seed['particle']
+    pb = particle_seed['pb']
+    pc = particle_seed['pc']
+    star = particle_seed['star']
+
+    t_start = particle_seed['particle']['tid'][0]
+    times = np.linspace(t_start, tmax, int(tmax*5)) #every 0.2 yrs
+
+    dt = 1.0 / 5 
+
     if n_planets == 2:
-        star, pb, pc = two_planet_case['star'], two_planet_case['pb'], two_planet_case['pc']
+        sim.add(m = 0.952, x=star['x'], y=star['y'], z=star['z'], hash='star', r = R_star)
+        m_b, m_c = 1.4, 6.4
 
-        sim.add(m = star['mass'], x=0, y= 0, z = 0, hash='star', r=R_star)
+    sim.add(m = m_b*jtos, a = pb['a'], e = pb['e'], f=pb['f'],
+            omega = pb['omega'], inc = pb['inc'], Omega = pb['Omega'], hash = 'pb', r=R_b)
 
-        sim.add(m = pb['mass'], a = pb['a'], e = pb['e'], f=np.random.rand()*2.*np.pi,
-                omega = pb['omega'], inc = pb['inc'], Omega = pb['Omega'], hash = 'pb', r=radii)
-        sim.add(m = pc['mass'], a = pc['a'], e = pc['e'], f=np.random.rand()*2.*np.pi,
-                omega = pc['omega'], inc = pc['inc'], Omega = pc['Omega'], hash = 'pc', r=radii)
-        
-    elif n_planets == 3:
-        star, pb, pc, pd = three_planet_case['star'], three_planet_case['pb'], three_planet_case['pc'], three_planet_case['pd']
+    sim.add(m = m_c*jtos, a = pc['a'], e = pc['e'], f=pc['f'], 
+            omega = pc['omega'], inc = pc['inc'], Omega = pc['Omega'], hash = 'pc', r=R_c)
 
-        sim.add(m = star['mass'], x=0, y= 0, z = 0, hash='star', r=R_star)
+    print(f'Added planets, which are at {sim.orbits()}')
+    N = len(p["a"])
 
-        sim.add(m = pd['mass'], a = pd['a'], e = pd['e'], f=np.random.rand()*2.*np.pi,
-                omega = pd['omega'], inc = pd['inc'], Omega = pd['Omega'], hash = 'pd', r=radii)
+    for i in range(N):
+        sim.add(
+            m=0.0,  # test particles
+            a=p["a"][i],
+            e=p["e"][i],
+            inc=p["inc"][i],
+            Omega=p["Omega"][i],
+            omega=p["omega"][i],
+            f=p["f"][i],
+            hash=int(p["hash"][i])
+        )
 
-        sim.add(m = pb['mass'], a = pb['a'], e = pb['e'], f=np.random.rand()*2.*np.pi,
-                omega = pb['omega'], inc = pb['inc'], Omega = pb['Omega'], hash = 'pb', r=radii)
-        sim.add(m = pc['mass'], a = pc['a'], e = pc['e'], f=np.random.rand()*2.*np.pi,
-                omega = pc['omega'], inc = pc['inc'], Omega = pc['Omega'], hash = 'pc', r=radii)
-        
-    for i, a in zip(particle_indices, a_group):
-        unique_hash = create_unique_hash(i, core_id)
-        inc = np.random.uniform(-10, 10)
-        sim.add(a=a, inc=np.radians(inc), f=np.random.rand()*2.*np.pi, e=0, 
-                primary=sim.particles['star'], hash=unique_hash)
-        
 
     sim.N_active = n_planets + 1
     sim.move_to_com()
 
-    trajectories = {create_unique_hash(i, core_id) : {'ejected': False, 'migrated': False,
+    trajectories = {h : {'ejected': False, 'migrated': False,
                                                       'collided': False, 'captured': False,
                                                     'captured_counter':0, 'captured_t0':None,
-                                                      'migrated_peri': False} for i in particle_indices}
+                                                      'migrated_peri': False} for h in p['hash']}
     
-    filename = f'core_outputs_yr2/core_{core_id}_{tmax}_yr_{N_particles}_{n_planets}_pl_w_captures_and_saving_every_100_yrs.nc'
-    #filename = f'core_outputs_yr2/tests/core_{core_id}_test.nc'
+    filename = f'core_outputs_yr2/core_{core_id}_{tmax}_yr_50000_{n_planets}_pl_w_captures_and_saving_every_100_yrs_RESUMED.nc'
+    
+    #filename = f'core_outputs_yr2/tests/core_{core_id}_test_2.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
-        sampling_period = 5000 #every x/5 = 1000
+        sampling_period = 500 #every x/5 = 100
         s_times = [time for i, time in enumerate(times) if i%sampling_period==0]
         n_saved_times = len(s_times)
         ncfile.createDimension('times_to_save', n_saved_times)
@@ -145,7 +120,7 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
         
         #times_var[:] = times
 
-        ncfile.description = f'simulation results from core {core_id}. Trevascus 2025 values (inc masses). {n_planets} planets!! "peri mig" when R<18. do not delete particles when migrated. tracking captures and collisions. saving every 100 yrs'
+        ncfile.description = f'these are a continuation of {core_id}. Trevascus 2025 values (inc masses). {n_planets} planets!! "peri mig" when R<18. do not delete particles when migrated. tracking captures and collisions. saving every 100 yrs. starting from the last saved time.'
         ncfile.history = 'created' + time.ctime(time.time())
 
         count_ejected = 0
@@ -172,13 +147,13 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
 
                 if not trajectories[hash_val.value]['collided']:
                     trajectories[hash_val.value]['collided'] = True
-                    count_collided += 1
+                    
 
                     print(f'collided! {p1.hash, p2.hash}')
                     # Save parameters in NetCDF
                     pp = sim.particles[hash_val]
                     collided_var[count_collided, :] = [sim.t, pp.x, pp.y, pp.z, pp.e, pp.a, pp.inc, pp.f, pp.Omega, pp.omega, hash_val.value, planet_hash.value]
-
+                    count_collided += 1
             return 0
         
 
@@ -224,7 +199,7 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
                 with open(f'progress_tracking_files/failed_cores_{n_planets}pl_outerdisc.txt', 'a') as f:
                     f.write(f'File {filename} failed at and t = {tid} yr.\n')
 
-                print(f'Core {core_id} failed.')
+                print(f'Core {core_id} failed because orbits crossed. b is at {apo_dist[0]} and c is at {peri_dist[1]}')
                 return None
             
             
@@ -263,8 +238,8 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
 
                 
                 d_pb = np.sqrt((p.x - sim.particles['pb'].x)**2 +
-                (p.y - sim.particles['pb'].y)**2 +
-                (p.z - sim.particles['pb'].z)**2)
+                                (p.y - sim.particles['pb'].y)**2 +
+                                (p.z - sim.particles['pb'].z)**2)
                 inside_pb = d_pb < hill_pb
 
                 d_pc = np.sqrt((p.x - sim.particles['pc'].x)**2 +
@@ -289,14 +264,6 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
                     if inside_pd:
                         capturing_planet = sim.particles['pd']
                         
-                        if traj['captured_t0'] is None:
-                            traj['captured_t0'] = sim.t
-                        traj['captured_counter'] +=1
-                    
-                    else:
-                        traj['captured_counter'] = 0
-                        traj['captured_t0'] = None
-
                 if capturing_planet is not None:
                     if traj['captured_t0'] is None:
                         traj['captured_t0'] = sim.t
@@ -332,13 +299,104 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
     end = time.time()
 
     print(f'core {core_id} done')
-    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_planets}pl_outerdisc.txt', 'a') as f:
+    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_outerdisc_restart.txt', 'a') as f:
         f.write(f'Core {core_id} finished and took {(end-start)/3600:.3f} h.\n')
 
     return filename
 
 #test this function
 #%%
+
+'''getting parameters for the test particles'''
+
+def get_all_deets(filename):
+    global n_particles
+
+    entries = []
+    N = len(filename)
+    print(f'{N} files')
+
+    for index, file in enumerate(filename):
+        with netCDF4.Dataset(file, 'r') as ncfile:
+
+            t_max = np.max(ncfile['test_particles'][:, :, 0 ])
+            print(t_max)
+            t_max_arg = int(t_max / 100)
+            all_particle_info = ncfile['test_particles'][t_max_arg, :, :]
+            
+            all_particle_info = all_particle_info.filled(np.nan)
+
+            valid_mask = np.all(np.isfinite(all_particle_info[:, 4:11]), axis=1)
+            new_valid_info = all_particle_info[valid_mask]
+            print(new_valid_info.shape)
+
+            pb, pc = all_particle_info[0], all_particle_info[1]
+            #print(all_particle_info[4, -1].type)
+            
+            m_star = 0.952
+            m_b, m_c = 1.4*jtos, 6.4*jtos
+            
+            r_b = np.array([pb[1], pb[2], pb[3]])
+            r_c = np.array([pc[1], pc[2], pc[3]])
+
+            star = -(m_b * r_b + m_c * r_c) / m_star
+
+            particles = {
+                "tid": new_valid_info[:, 0].astype(float),
+                "e": new_valid_info[:, 4].astype(float),
+                "a": new_valid_info[:, 5].astype(float),
+                "inc": new_valid_info[:, 6].astype(float),
+                "f": new_valid_info[:, 7].astype(float),
+                "Omega": new_valid_info[:, 8].astype(float),
+                "omega": new_valid_info[:, 9].astype(float),
+                "hash": new_valid_info[:, 10].astype(int),
+            }
+
+            entry = {
+                "particle": particles,
+                "pb": {
+                    "e": float(pb[4]),
+                    "a": float(pb[5]),
+                    "inc": float(pb[6]),
+                    "f": float(pb[7]),
+                    "Omega": float(pb[8]),
+                    "omega": float(pb[9]),
+                },
+                "pc": {
+                    "e": float(pc[4]),
+                    "a": float(pc[5]),
+                    "inc": float(pc[6]),
+                    "f": float(pc[7]),
+                    "Omega": float(pc[8]),
+                    "omega": float(pc[9]),
+                },
+                "star": {
+                    "x": float(star[0]),
+                    "y": float(star[1]),
+                    "z": float(star[2]),
+                }
+            }
+
+                        # if n_planets == 3:
+                        #     entry["pd"] = {
+                        #         "e": float(pd[4]),
+                        #         "a": float(pd[5]),
+                        #         "inc": float(pd[6]),
+                        #         "f": float(pd[7]),
+                        #         "Omega": float(pd[8]),
+                        #         "omega": float(pd[9]),
+                        #     }
+
+                        # mig_peri_list.append(entry)
+
+                                
+            entries.append(entry)
+
+    return entries
+
+files = [f'core_outputs_yr2/core_{i}_5000000.0_yr_50000_2_pl_w_captures_and_saving_every_100_yrs.nc' for i in [34, 35, 36, 42, 48]]
+#%%
+
 def prompt():
     confirmation = input('Ally, did you remember to change the name of your file and update file description? Type "YES" if so.')
     if confirmation.upper() == 'YES':
@@ -347,63 +405,39 @@ def prompt():
     else:
         return False
     
-def prompt_n_planets():
-    while True:
-        try:
-            n_pl = int(input("How many planets do you want to simulate? (2 or 3): "))
-            if n_pl in (2, 3):
-                return n_pl
-            else:
-                print("Please enter 2 or 3.")
-        except ValueError:
-            print("no silly, I said 2 or 3.")
-    
-    
-def parallelization(N_testparticles, tmax, N_cores, n_planets):
+  
+def parallelization(tmax, N_cores, files, n_pl):
 
-    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_planets}pl_outerdisc.txt', 'w') as f:
+    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_outerdisc_restart.txt', 'w') as f:
         pass
 
-    with open(f'progress_tracking_files/failed_cores_{n_planets}pl_outerdisc.txt', 'w') as f:
+    with open(f'progress_tracking_files/failed_cores_{n_pl}_restart.txt', 'w') as f:
         pass
 
-    a_vals = np.random.uniform(54, 87, N_testparticles)
-
-    indices = np.arange(N_testparticles)
-    sorted_idx = np.argsort(a_vals)   # indices of particles sorted by semimajor axis
-    a_vals = a_vals[sorted_idx]       # sorted semimajor axes
-    indices = indices[sorted_idx]   
-
-    groups = np.array_split(indices, N_cores)
-    a_groups = np.array_split(a_vals, N_cores)
-    print(a_groups)
-    chunk_results = Parallel(n_jobs=N_cores)(
-        delayed(simulation)(tmax, group, core_id, a_group, n_planets) for core_id, (group, a_group) in enumerate(zip(groups, a_groups))
-    )
+    chunk_results = Parallel(n_jobs=N_cores, batch_size=1)(
+        delayed(simulation)(tmax, particle, core, n_pl)
+        for (particle, core) in zip(files, [34, 35, 36, 42, 48]))
     
+        
     return chunk_results
 
 #%%
-from notify_run import Notify
-
-notify = Notify()
-print(notify.endpoint)
 if __name__ == '__main__':
 
-    N_particles = 20000
     tmax = 5e6
-    N_cores = 50
 
+    files = [f'core_outputs_yr2/core_{i}_5000000.0_yr_50000_2_pl_w_captures_and_saving_every_100_yrs.nc' for i in [34, 35, 36, 42, 48]]
+    N_cores = len(files)
 
-    notify.send('Script started')
+    if prompt():                       # ← your existing prompt
+        n_pl = 2
 
-    if prompt():
-        n_planets = prompt_n_planets()      # ← new prompt
-
-        filenames = parallelization(N_particles, tmax, N_cores, n_planets)
+        particles = get_all_deets(files)
+        print(len(particles))
         
+        filenames = parallelization(
+           tmax, N_cores, particles, n_pl
+        )
+
     else:
         print('I think you should change your file name first. You are welcome.')
-
-    notify.send('Script done! ✅')
-

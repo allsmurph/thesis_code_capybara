@@ -258,10 +258,6 @@ def simulation(tmax, particle_seed, core_id, n_planets):
                 if inside_pd:
                     capturing_planet = sim.particles['pd']
                     
-                    if traj['captured_t0'] is None:
-                        traj['captured_t0'] = sim.t
-                    traj['captured_counter'] +=1
-                
                 else:
                     traj['captured_counter'] = 0
                     traj['captured_t0'] = None

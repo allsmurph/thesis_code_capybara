@@ -113,11 +113,11 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
                                                     'captured_counter':0, 'captured_t0':None,
                                                       'migrated_peri': False} for i in particle_indices}
     
-    filename = f'core_outputs_yr2/core_{core_id}_{tmax}_yr_{N_particles}_{n_planets}_pl_w_captures_and_saving_every_100_yrs.nc'
-    #filename = f'core_outputs_yr2/tests/core_{core_id}_test.nc'
+    filename = f'core_outputs_yr2/core_{core_id}_{tmax}_yr_{N_particles}_{n_planets}_pl_w_captures_and_saving_every_100_yrs_retry.nc'
+    #filename = f'core_outputs_yr2/tests/core_{core_id}_test_1.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
-        sampling_period = 5000 #every x/5 = 1000
+        sampling_period = 500 #every x/5 = 1000
         s_times = [time for i, time in enumerate(times) if i%sampling_period==0]
         n_saved_times = len(s_times)
         ncfile.createDimension('times_to_save', n_saved_times)
@@ -145,7 +145,7 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
         
         #times_var[:] = times
 
-        ncfile.description = f'simulation results from core {core_id}. Trevascus 2025 values (inc masses). {n_planets} planets!! "peri mig" when R<18. do not delete particles when migrated. tracking captures and collisions. saving every 100 yrs'
+        ncfile.description = f'simulation results from core {core_id}. Trevascus 2025 values (inc masses). {n_planets} planets!! "peri mig" when R<18. do not delete particles when migrated. tracking captures and collisions. saving every 1000 yrs. this is a redisribution of 1k particles per core to 340 particles per core (17 cores became 50)'
         ncfile.history = 'created' + time.ctime(time.time())
 
         count_ejected = 0
@@ -376,10 +376,29 @@ def parallelization(N_testparticles, tmax, N_cores, n_planets):
 
     groups = np.array_split(indices, N_cores)
     a_groups = np.array_split(a_vals, N_cores)
-    print(a_groups)
-    chunk_results = Parallel(n_jobs=N_cores)(
-        delayed(simulation)(tmax, group, core_id, a_group, n_planets) for core_id, (group, a_group) in enumerate(zip(groups, a_groups))
-    )
+
+    failed_cores = [17, 19, 28, 30, 31, 32, 33, 38, 39, 40, 41, 43, 44, 45, 46, 47, 49]
+
+    failed_groups = [groups[i] for i in failed_cores]
+    failed_a_groups = [a_groups[i] for i in failed_cores]
+    failed_indices = np.concatenate(failed_groups)
+    failed_a_vals  = np.concatenate(failed_a_groups)
+
+    N_new_cores = 50
+
+    new_groups = np.array_split(failed_indices, N_new_cores)
+    new_a_groups = np.array_split(failed_a_vals, N_new_cores)
+    print(new_a_groups)
+
+    print(f"Rerunning {len(failed_indices)} particles across {N_new_cores} cores")
+
+
+    core_offset = 100
+
+    chunk_results = Parallel(n_jobs=N_new_cores)(
+        delayed(simulation)(tmax, new_groups[i], i+core_offset, new_a_groups[i], n_planets)
+        for i in range(N_new_cores))
+
     
     return chunk_results
 
@@ -390,20 +409,20 @@ notify = Notify()
 print(notify.endpoint)
 if __name__ == '__main__':
 
-    N_particles = 20000
+    N_particles = 50000
     tmax = 5e6
     N_cores = 50
 
 
-    notify.send('Script started')
+    # notify.send('Script started')
 
     if prompt():
-        n_planets = prompt_n_planets()      # ← new prompt
+        n_planets = prompt_n_planets()      
 
         filenames = parallelization(N_particles, tmax, N_cores, n_planets)
         
     else:
         print('I think you should change your file name first. You are welcome.')
 
-    notify.send('Script done! ✅')
+    # notify.send('Script done! ✅')
 
