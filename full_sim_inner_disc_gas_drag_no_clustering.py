@@ -14,6 +14,13 @@ import glob
 import resource
 import reboundx
 
+print(reboundx.__file__)
+print(reboundx.__version__)
+
+print(rebound.__file__)
+print(rebound.__version__)
+
+
 # Limit to 100 GB of virtual memory
 limit = 100 * 1024 ** 3
 resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
@@ -31,7 +38,7 @@ R_star = 1.26 * const.R_sun.to('au').value
 dtor = np.pi / 180
 #%%ä
 
-def simulation(tmax, particle_seed, core_id, n_planets):
+def simulation(tmax, particle_seed, core_id, n_planets, pl_size):
 
     times = np.linspace(0, tmax, int(tmax*5))
     '''
@@ -76,13 +83,21 @@ def simulation(tmax, particle_seed, core_id, n_planets):
 
     rebx = reboundx.Extras(sim)
 
-    myforce = rebx.load_force("test_force")     
+    if pl_size == 100:
+        myforce = rebx.load_force("gas_drag_100km")  
+
+    elif pl_size == 10:
+        myforce = rebx.load_force("gas_drag_10km")
+
+    elif pl_size == 1:
+        myforce = rebx.load_force("gas_drag_1km")   
+    
     rebx.add_force(myforce)
 
     trajectories = {h : {'ejected': False, 'collided': False, 'captured': False, 'star_grazed': False,
                         'captured_counter':0, 'captured_t0':None} for h in testp_hashes}
     
-    filename = f'core_outputs_yr2/gas_drag/core_{core_id}_{tmax}_yr_ptcl_{particle_seed["particle"]["hash"]}_{n_planets}_pl_single_particle_2.nc'
+    filename = f'core_outputs_yr2/gas_drag_final/core_{core_id}_{tmax}_yr_ptcl_{particle_seed["particle"]["hash"]}_{n_planets}_pl_single_particle_{pl_size}km.nc'
     #filename = f'core_outputs_yr2/test_{core_id}.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
@@ -194,7 +209,7 @@ def simulation(tmax, particle_seed, core_id, n_planets):
                     else:
                         massive_bods_var[save_t_index, j, :] = [t, p.x, p.y, p.z, 0, 0, 0, 0, 0, 0, 11111]
             
-                with open(f'progress_tracking_files/failed_cores_{n_pl}.txt', 'a') as f:
+                with open(f'progress_tracking_files/failed_cores_{n_pl}_gas_drag_{pl_size}km.txt', 'a') as f:
                     f.write(f'File {filename} failed at and t = {tid} yr.\n')
                 print(f'Core {core_id} failed.')
                 return None
@@ -303,8 +318,8 @@ def simulation(tmax, particle_seed, core_id, n_planets):
     end = time.time()
 
     print(f'core {core_id} done')
-    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_gas_drag_on.txt', 'a') as f:
-        f.write(f'Core {core_id} finished and took {(end-start)/3600:.3f} h.\n')
+    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_gas_drag_on_{pl_size}km.txt', 'a') as f:
+        f.write(f'Core {core_id} finished and took {(end-start)/60:.3f} min.\n')
 
     return filename
 
@@ -333,13 +348,15 @@ def find_mig_and_ej(filename, n_planets):
 
             c1 = np.all(massive_bodies_e < 1)
 
+            c2 = np.all(dist[-1] < 87)
+
             if n_planets == 2:
                 c3 = ((dist[0] < dist_small[1]))
             if n_planets == 3:
                 # note that test particles are ordered from closest to furthest out!!
                 c3 = ((dist[0] < dist_small[1])) and (dist[1] < dist_small[2]) 
                 
-            if c1 and c3:    
+            if c1 and c3 and c2:    
                 filecount += 1
 
                 migrated_peri = ncfile['migrated_peri'][:]
@@ -409,23 +426,24 @@ def find_mig_and_ej(filename, n_planets):
                                 }
 
                             mig_peri_list.append(entry)
-
+            else:
+                print('file', file)
                                 
-    n_particles = 200 * filecount
-
-    print(f'Finally: {filecount} files => {n_particles} particles')
+    #n_particles = 200 * filecount
+    #n_particles = len(mig_peri_list)
+    print(f'Finally: {filecount} files')
 
     results = {
         'mig_all': mig_peri_list,
-        'n_particles': n_particles, #should be 8400 for this simulation 
+         #should be 8400 for this simulation 
     }
 
     #np.savez('hist_data_w_all_parameters.npz', **results)
     return results #{'migrated': migrated_array, 'ejected': ejected_array}
 
-# files = glob.glob(f'core_outputs_yr2/*3_pl*saving_every_100_yrs.nc')
-# results = find_mig_and_ej(files, 3)
-# mig_all = results['mig_all']
+files = glob.glob(f'core_outputs_yr2/*50000_2_pl*saving_every_100_yrs*.nc')
+results = find_mig_and_ej(files, 2)
+mig_all = results['mig_all']
 
 #%%
 
@@ -447,25 +465,37 @@ def prompt_n_planets():
                 print("Please enter 2 or 3.")
         except ValueError:
             print("no silly, I said 2 or 3.")
-    
-def parallelization(tmax, N_cores, mig_all, n_pl):
 
-    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_gas_drag_on.txt', 'w') as f:
+def prompt_gas_drag():
+    while True:
+        try:
+            pl_size = int(input("What size planetesimals do you want to simulate? (1, 10, or 100 km): "))
+            if pl_size in (1, 10, 100):
+                return pl_size
+            else:
+                print("Please enter 1, 10, or 100.")
+        except ValueError:
+            print("no silly, I said 1, 10, or 100.")
+    
+def parallelization(tmax, N_cores, mig_all, n_pl, pl_size):
+
+    with open(f'progress_tracking_files/progress_{tmax}_yr_{n_pl}_gas_drag_on_{pl_size}km.txt', 'w') as f:
         pass
 
-    with open(f'progress_tracking_files/failed_cores_{n_pl}.txt', 'w') as f:
+    with open(f'progress_tracking_files/failed_cores_{n_pl}_gas_drag_{pl_size}km.txt', 'w') as f:
         pass
 
 
     print(f'You have {len(mig_all)} particles to choose from.')
 
 
-    chunk_results = Parallel(n_jobs=N_cores, batch_size=1)(
-        delayed(simulation)(tmax, ptcl, core_id, n_pl)
+    chunk_results = Parallel(n_jobs=N_cores, backend="loky", batch_size=1)(
+        delayed(simulation)(tmax, ptcl, core_id, n_pl, pl_size)
         for core_id, ptcl in enumerate(mig_all)
     )
         
     return chunk_results
+
 
 #%%
 if __name__ == '__main__':
@@ -474,7 +504,7 @@ if __name__ == '__main__':
     N_cores = 56
     N_particles = N_cores
 
-    two_pl_files = glob.glob(f'core_outputs_yr2/*2_pl*saving*.nc')
+    two_pl_files = glob.glob(f'core_outputs_yr2/*50000_2_pl*saving*.nc')
     three_pl_files = glob.glob(f'core_outputs_yr2/*3_pl_*saving_every_100_yrs.nc')
 
     if prompt():                       # ← your existing prompt
@@ -487,8 +517,9 @@ if __name__ == '__main__':
 
         mig_all = find_mig_and_ej(files, n_pl)['mig_all']
         print(len(mig_all))
+        pl_size = prompt_gas_drag()
         filenames = parallelization(
-           tmax, N_cores, mig_all, n_pl
+           tmax, N_cores, mig_all, n_pl, pl_size
         )
 
     else:

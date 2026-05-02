@@ -113,7 +113,7 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
                                                     'captured_counter':0, 'captured_t0':None,
                                                       'migrated_peri': False} for i in particle_indices}
     
-    filename = f'core_outputs_yr2/core_{core_id}_{tmax}_yr_{N_particles}_{n_planets}_pl_w_captures_and_saving_every_100_yrs_retry.nc'
+    filename = f'core_outputs_yr2/core_{core_id}_{tmax}_yr_{N_particles}_{n_planets}_pl_w_captures_and_saving_every_100_yrs_retry_failed_cores.nc'
     #filename = f'core_outputs_yr2/tests/core_{core_id}_test_1.nc'
     with netCDF4.Dataset(filename, 'w') as ncfile:
 
@@ -145,7 +145,7 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
         
         #times_var[:] = times
 
-        ncfile.description = f'simulation results from core {core_id}. Trevascus 2025 values (inc masses). {n_planets} planets!! "peri mig" when R<18. do not delete particles when migrated. tracking captures and collisions. saving every 1000 yrs. this is a redisribution of 1k particles per core to 340 particles per core (17 cores became 50)'
+        ncfile.description = f'simulation results from core {core_id}. failed_initial_cores = [34, 35, 36, 42, 48]. Trevascus 2025 values (inc masses). {n_planets} planets!! "peri mig" when R<18. do not delete particles when migrated. tracking captures and collisions. saving every 1000 yrs. this is a redisribution of 1k particles per core to 200 particles per core (5 cores became 25)'
         ncfile.history = 'created' + time.ctime(time.time())
 
         count_ejected = 0
@@ -328,6 +328,8 @@ def simulation(tmax, particle_indices, core_id, a_group, n_planets):
                 for i, p in enumerate(sim.particles[1:]):
                     test_particles_var[save_t_index, i, :] = [tid, p.x, p.y, p.z, p.e, p.a, p.inc, p.f, p.Omega, p.omega, p.hash.value]
                 save_t_index += 1
+
+                ncfile.sync()
       
     end = time.time()
 
@@ -377,14 +379,15 @@ def parallelization(N_testparticles, tmax, N_cores, n_planets):
     groups = np.array_split(indices, N_cores)
     a_groups = np.array_split(a_vals, N_cores)
 
-    failed_cores = [17, 19, 28, 30, 31, 32, 33, 38, 39, 40, 41, 43, 44, 45, 46, 47, 49]
+    #failed_cores = [17, 19, 28, 30, 31, 32, 33, 38, 39, 40, 41, 43, 44, 45, 46, 47, 49]
+    failed_cores = [34, 35, 36, 42, 48]
 
     failed_groups = [groups[i] for i in failed_cores]
     failed_a_groups = [a_groups[i] for i in failed_cores]
     failed_indices = np.concatenate(failed_groups)
     failed_a_vals  = np.concatenate(failed_a_groups)
 
-    N_new_cores = 50
+    N_new_cores = 25
 
     new_groups = np.array_split(failed_indices, N_new_cores)
     new_a_groups = np.array_split(failed_a_vals, N_new_cores)
@@ -392,8 +395,7 @@ def parallelization(N_testparticles, tmax, N_cores, n_planets):
 
     print(f"Rerunning {len(failed_indices)} particles across {N_new_cores} cores")
 
-
-    core_offset = 100
+    core_offset = 200
 
     chunk_results = Parallel(n_jobs=N_new_cores)(
         delayed(simulation)(tmax, new_groups[i], i+core_offset, new_a_groups[i], n_planets)

@@ -43,4 +43,4 @@ in core_outputs_yr2/gas_drag:
     - 2_pl_single_particle_new.nc - tracks star-grazers but wrong initial parameters
     - 2_pl_single_particle_new_NOGD.nc - tracks star-grazers but wrong initial parameters
     - ends with particle_2.nc - tracks star-grazers as peri < 0.4 AU, correct initial parameters, correct stellar masses
-    
+    - ends with particle_2_NOGD.nc - same but no GD

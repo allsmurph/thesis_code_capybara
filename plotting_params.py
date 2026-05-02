@@ -83,3 +83,9 @@ def use_my_style():
 #     "#53a7d4",  # medium
 #     "#002A68",  # dark
 # ]
+
+#new:
+# color_blue = [
+#     "#73c3ee",  # medium
+#     "#002A68",  # dark
+# ]

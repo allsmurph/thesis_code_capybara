@@ -426,8 +426,8 @@ def find_mig_and_ej(filename, n_planets):
     #np.savez('hist_data_w_all_parameters.npz', **results)
     return results #{'migrated': migrated_array, 'ejected': ejected_array}
 
-files = glob.glob(f'core_outputs_yr2/*3_pl*saving*')
-results = find_mig_and_ej(files, 3)
+files = glob.glob(f'core_outputs_yr2/*50000_2_pl*saving*')
+results = find_mig_and_ej(files, 2)
 mig_all = results['mig_all']
 
 print(mig_all['pd']['inc'])
