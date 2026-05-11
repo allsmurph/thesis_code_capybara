@@ -232,6 +232,7 @@ def simulation(tmax, particle_seed, core_id, n_planets, pl_size):
                 test_particles_var[save_t_index, :] = [tid, p.x, p.y, p.z, p.e, p.a, p.inc, p.f, p.Omega, p.omega, p.hash.value]
 
                 save_t_index += 1
+                ncfile.sync()
  
             pt = sim.particles[-1]
             h = pt.hash.value
@@ -426,8 +427,8 @@ def find_mig_and_ej(filename, n_planets):
                                 }
 
                             mig_peri_list.append(entry)
-            else:
-                print('file', file)
+            # else:
+            #     print('file', file)
                                 
     #n_particles = 200 * filecount
     #n_particles = len(mig_peri_list)
@@ -469,11 +470,11 @@ def prompt_n_planets():
 def prompt_gas_drag():
     while True:
         try:
-            pl_size = int(input("What size planetesimals do you want to simulate? (1, 10, or 100 km): "))
-            if pl_size in (1, 10, 100):
+            pl_size = int(input("What size planetesimals do you want to simulate? (0, 1, 10, or 100 km): "))
+            if pl_size in (0, 1, 10, 100):
                 return pl_size
             else:
-                print("Please enter 1, 10, or 100.")
+                print("Please enter 0, 1, 10, or 100.")
         except ValueError:
             print("no silly, I said 1, 10, or 100.")
     
@@ -505,7 +506,7 @@ if __name__ == '__main__':
     N_particles = N_cores
 
     two_pl_files = glob.glob(f'core_outputs_yr2/*50000_2_pl*saving*.nc')
-    three_pl_files = glob.glob(f'core_outputs_yr2/*3_pl_*saving_every_100_yrs.nc')
+    three_pl_files = glob.glob(f'core_outputs_yr2/three_planet_final_results/core_outputs_yr2/*.nc')
 
     if prompt():                       # ← your existing prompt
         n_pl = prompt_n_planets()      # ← new prompt
